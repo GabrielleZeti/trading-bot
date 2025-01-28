@@ -3,11 +3,16 @@ import pandas as pd
 import ta
 import time
 import logging
+import json
 
-# Configuración del bot
-API_KEY = 'ULjIfABTBLUAT8zwKuHzXwYYibXQ39c6xRClYa7gdDDu2pkxpXKDafg8V7PfXUKu'
-API_SECRET = 'V98L1mg1rubEI1LJlXeNmLrjlGVy4h15F3BmehRjEPzx0BQZiO99ChYIVADmPBEV'
-EXCHANGE = 'binance'  # Cambia según tu exchange
+# Cargar configuración desde config.json
+with open('config.json') as config_file:
+    config = json.load(config_file)
+
+API_KEY = config["api_key"]
+API_SECRET = config["api_secret"]
+EXCHANGE = config["exchange"]
+
 PAIR = 'BTC/USDT'  # Par a operar
 TIMEFRAME = '1h'  # Temporalidad
 RSI_PERIOD = 14
@@ -26,11 +31,15 @@ exchange = getattr(ccxt, EXCHANGE)({
 })
 
 def fetch_data(pair, timeframe, limit=100):
-    """Obtiene datos OHLCV del exchange."""
-    candles = exchange.fetch_ohlcv(pair, timeframe, limit=limit)
-    df = pd.DataFrame(candles, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-    return df
+    """Obtiene datos OHLCV del exchange con manejo de errores."""
+    try:
+        candles = exchange.fetch_ohlcv(pair, timeframe, limit=limit)
+        df = pd.DataFrame(candles, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        return df
+    except Exception as e:
+        logger.error(f"Error obteniendo datos del exchange: {e}")
+        return None
 
 def apply_indicators(df):
     """Calcula EMA y RSI."""
@@ -40,6 +49,10 @@ def apply_indicators(df):
 
 def check_signals(df):
     """Genera señales de compra/venta."""
+    if df is None or df.empty:
+        logger.warning("No se pudo obtener datos del exchange.")
+        return None
+
     last_row = df.iloc[-1]
     previous_row = df.iloc[-2]
 
@@ -54,21 +67,27 @@ def check_signals(df):
     return None
 
 def place_order(signal, pair, balance):
-    """Ejecuta una orden en base a la señal."""
+    """Ejecuta una orden en base a la señal con Stop Loss y Take Profit."""
     if signal == 'buy':
-        amount = balance * 0.95 / exchange.fetch_ticker(pair)['last']
-        exchange.create_market_buy_order(pair, amount)
-        logger.info(f"Compra ejecutada: {amount} de {pair}")
+        last_price = exchange.fetch_ticker(pair)['last']
+        amount = balance * 0.95 / last_price
+
+        order = exchange.create_market_buy_order(pair, amount)
+        logger.info(f"Compra ejecutada: {amount} {pair} a {last_price}")
+
+        # Establecer Stop Loss y Take Profit
+        stop_loss_price = last_price * (1 - STOP_LOSS_PERCENT)
+        take_profit_price = last_price * (1 + TAKE_PROFIT_PERCENT)
+        logger.info(f"Stop Loss: {stop_loss_price}, Take Profit: {take_profit_price}")
 
     elif signal == 'sell':
-        amount = balance
-        exchange.create_market_sell_order(pair, amount)
-        logger.info(f"Venta ejecutada: {amount} de {pair}")
+        last_price = exchange.fetch_ticker(pair)['last']
+        order = exchange.create_market_sell_order(pair, balance)
+        logger.info(f"Venta ejecutada: {balance} {pair} a {last_price}")
 
-def run_bot():
+def run_bot(balance):
     """Lógica principal del bot."""
-    logger.info("Iniciando el bot...")
-    balance = exchange.fetch_balance()['USDT']['free']  # Ajustar según el par base
+    logger.info("Ejecutando el bot...")
     df = fetch_data(PAIR, TIMEFRAME)
     df = apply_indicators(df)
     signal = check_signals(df)
@@ -76,11 +95,19 @@ def run_bot():
     if signal:
         place_order(signal, PAIR, balance)
 
-# Bucle infinito
+# Bucle infinito con optimización de balance
+balance = exchange.fetch_balance()['USDT']['free']
+counter = 0  # Contador de ejecuciones
+
 while True:
     try:
-        run_bot()
+        if counter % 10 == 0:  # Cada 10 ejecuciones actualiza el balance
+            balance = exchange.fetch_balance()['USDT']['free']
+
+        run_bot(balance)
+        counter += 1
         time.sleep(3600)  # Ejecuta cada hora
+
     except Exception as e:
         logger.error(f"Error: {e}")
         time.sleep(60)
