@@ -2,27 +2,22 @@ import ccxt
 import pandas as pd
 import ta
 import time
+import json
 import logging
 
-# Configuración del bot
-API_KEY = 'ULjIfABTBLUAT8zwKuHzXwYYibXQ39c6xRClYa7gdDDu2pkxpXKDafg8V7PfXUKu'
-API_SECRET = 'V98L1mg1rubEI1LJlXeNmLrjlGVy4h15F3BmehRjEPzx0BQZiO99ChYIVADmPBEV'
-EXCHANGE = 'binance'  # Cambia según tu exchange
-PAIR = 'BTC/USDT'  # Par a operar
-TIMEFRAME = '1h'  # Temporalidad
-RSI_PERIOD = 14
-EMA_PERIOD = 50
-STOP_LOSS_PERCENT = 0.02  # 2%
-TAKE_PROFIT_PERCENT = 0.04  # 4%
-
 # Configuración de logs
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
 
+# Cargar configuración desde un archivo JSON
+with open("config.json", "r") as file:
+    config = json.load(file)
+
 # Conectar con el exchange
-exchange = getattr(ccxt, EXCHANGE)({
-    'apiKey': API_KEY,
-    'secret': API_SECRET,
+exchange = getattr(ccxt, config["exchange"])({
+    'apiKey': config["api_key"],
+    'secret': config["api_secret"],
+    'options': {'defaultType': 'spot'}
 })
 
 def fetch_data(pair, timeframe, limit=100):
@@ -34,8 +29,8 @@ def fetch_data(pair, timeframe, limit=100):
 
 def apply_indicators(df):
     """Calcula EMA y RSI."""
-    df['EMA'] = ta.trend.ema_indicator(df['close'], window=EMA_PERIOD)
-    df['RSI'] = ta.momentum.rsi(df['close'], window=RSI_PERIOD)
+    df['EMA'] = ta.trend.ema_indicator(df['close'], window=config["ema_period"])
+    df['RSI'] = ta.momentum.rsi(df['close'], window=config["rsi_period"])
     return df
 
 def check_signals(df):
@@ -43,44 +38,45 @@ def check_signals(df):
     last_row = df.iloc[-1]
     previous_row = df.iloc[-2]
 
-    # Condición de compra
     if last_row['close'] > last_row['EMA'] and previous_row['RSI'] < 30 and last_row['RSI'] > 30:
         return 'buy'
 
-    # Condición de venta
     if last_row['close'] < last_row['EMA'] and previous_row['RSI'] > 70 and last_row['RSI'] < 70:
         return 'sell'
 
     return None
 
-def place_order(signal, pair, balance):
+def place_order(signal, pair):
     """Ejecuta una orden en base a la señal."""
+    balance = exchange.fetch_balance()['USDT']['free']
+    
     if signal == 'buy':
         amount = balance * 0.95 / exchange.fetch_ticker(pair)['last']
         exchange.create_market_buy_order(pair, amount)
-        logger.info(f"Compra ejecutada: {amount} de {pair}")
+        logger.info(f"🚀 Compra ejecutada: {amount} {pair}")
 
     elif signal == 'sell':
-        amount = balance
+        amount = exchange.fetch_balance()[pair.split('/')[0]]['free']
         exchange.create_market_sell_order(pair, amount)
-        logger.info(f"Venta ejecutada: {amount} de {pair}")
+        logger.info(f"🔴 Venta ejecutada: {amount} {pair}")
 
 def run_bot():
     """Lógica principal del bot."""
-    logger.info("Iniciando el bot...")
-    balance = exchange.fetch_balance()['USDT']['free']  # Ajustar según el par base
-    df = fetch_data(PAIR, TIMEFRAME)
-    df = apply_indicators(df)
-    signal = check_signals(df)
+    try:
+        logger.info("🤖 Iniciando el bot...")
+        df = fetch_data(config["pair"], config["timeframe"])
+        df = apply_indicators(df)
+        signal = check_signals(df)
 
-    if signal:
-        place_order(signal, PAIR, balance)
+        if signal:
+            place_order(signal, config["pair"])
+        else:
+            logger.info("⏳ No hay señales en este momento.")
+
+    except Exception as e:
+        logger.error(f"❌ Error: {e}")
 
 # Bucle infinito
 while True:
-    try:
-        run_bot()
-        time.sleep(3600)  # Ejecuta cada hora
-    except Exception as e:
-        logger.error(f"Error: {e}")
-        time.sleep(60)
+    run_bot()
+    time.sleep(3600)  # Ejecuta cada hora
