@@ -1,5 +1,0 @@
-{
-  "api_key": "ULjIfABTBLUAT8zwKuHzXwYYibXQ39c6xRClYa7gdDDu2pkxpXKDafg8V7PfXUKu",
-  "api_secret": "V98L1mg1rubEI1LJlXeNmLrjlGVy4h15F3BmehRjEPzx0BQZiO99ChYIVADmPBEV",
-  "exchange": "binance" 
-}
