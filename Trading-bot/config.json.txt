@@ -1,6 +1,6 @@
 {
-  "api_key": "ULjIfABTBLUAT8zwKuHzXwYYibXQ39c6xRClYa7gdDDu2pkxpXKDafg8V7PfXUKu",
-  "api_secret": "V98L1mg1rubEI1LJlXeNmLrjlGVy4h15F3BmehRjEPzx0BQZiO99ChYIVADmPBEV",
+  "api_key": "45EhV8XmXCZa4HiHiTMyYNnxTUsBDekTLVANzvW52gRLO3zGXGtSQeJG4j1A0QZAB2UdC6IE6nJF1yPoKOQZA",
+  "api_secret": "lpYBBs1oSrpkArXmrhADun6QEN54xpJ4aDpZwe4f7bAd9zr68BEAw9StrcO4L0xidhG9kQcDi32LPyDq4gA",
   "exchange": "bingx",
   "pair": "BTC/USDT",
   "timeframe": "1h",
