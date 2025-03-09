@@ -4,12 +4,13 @@ import ta
 import time
 import json
 import logging
+from datetime import datetime, timedelta
 
 # Configuración de logs
 logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
 
-# Cargar configuración desde un archivo JSON
+# Cargar configuración
 with open("config.json", "r") as file:
     config = json.load(file)
 
@@ -48,17 +49,21 @@ def check_signals(df):
 
 def place_order(signal, pair):
     """Ejecuta una orden en base a la señal."""
-    balance = exchange.fetch_balance()['USDT']['free']
-    
-    if signal == 'buy':
-        amount = balance * 0.95 / exchange.fetch_ticker(pair)['last']
-        exchange.create_market_buy_order(pair, amount)
-        logger.info(f"🚀 Compra ejecutada: {amount} {pair}")
+    try:
+        balance = exchange.fetch_balance()['USDT']['free']
+        
+        if signal == 'buy':
+            amount = balance * 0.95 / exchange.fetch_ticker(pair)['last']
+            exchange.create_market_buy_order(pair, amount)
+            logger.info(f"🚀 Compra ejecutada: {amount} {pair}")
 
-    elif signal == 'sell':
-        amount = exchange.fetch_balance()[pair.split('/')[0]]['free']
-        exchange.create_market_sell_order(pair, amount)
-        logger.info(f"🔴 Venta ejecutada: {amount} {pair}")
+        elif signal == 'sell':
+            amount = exchange.fetch_balance()[pair.split('/')[0]]['free']
+            exchange.create_market_sell_order(pair, amount)
+            logger.info(f"🔴 Venta ejecutada: {amount} {pair}")
+
+    except Exception as e:
+        logger.error(f"❌ Error al ejecutar la orden: {e}")
 
 def run_bot():
     """Lógica principal del bot."""
