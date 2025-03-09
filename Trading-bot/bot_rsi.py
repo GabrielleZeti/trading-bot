@@ -23,15 +23,21 @@ exchange = getattr(ccxt, config["exchange"])({
 
 def fetch_data(pair, timeframe, limit=100):
     """Obtiene datos OHLCV del exchange."""
-    candles = exchange.fetch_ohlcv(pair, timeframe, limit=limit)
-    df = pd.DataFrame(candles, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-    return df
+    try:
+        candles = exchange.fetch_ohlcv(pair, timeframe, limit=limit)
+        df = pd.DataFrame(candles, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        logger.info(f"📊 Datos obtenidos: {len(df)} registros.")
+        return df
+    except Exception as e:
+        logger.error(f"❌ Error al obtener datos: {e}")
+        return None
 
 def apply_indicators(df):
     """Calcula EMA y RSI."""
     df['EMA'] = ta.trend.ema_indicator(df['close'], window=config["ema_period"])
     df['RSI'] = ta.momentum.rsi(df['close'], window=config["rsi_period"])
+    logger.info(f"📈 EMA: {df['EMA'].iloc[-1]}, RSI: {df['RSI'].iloc[-1]}")
     return df
 
 def check_signals(df):
@@ -70,18 +76,20 @@ def run_bot():
     try:
         logger.info("🤖 Iniciando el bot...")
         df = fetch_data(config["pair"], config["timeframe"])
-        df = apply_indicators(df)
-        signal = check_signals(df)
-
-        if signal:
-            place_order(signal, config["pair"])
-        else:
-            logger.info("⏳ No hay señales en este momento.")
-
+        if df is not None:
+            df = apply_indicators(df)
+            signal = check_signals(df)
+            logger.info(f"📡 Señal generada: {signal}")
+            if signal:
+                logger.info(f"🚀 Señal de {signal} detectada.")
+                place_order(signal, config["pair"])
+            else:
+                logger.info("⏳ No hay señales en este momento.")
     except Exception as e:
-        logger.error(f"❌ Error: {e}")
+        logger.error(f"❌ Error en run_bot: {e}")
 
 # Bucle infinito
 while True:
+    logger.info("🔄 Ejecutando ciclo...")
     run_bot()
     time.sleep(3600)  # Ejecuta cada hora
