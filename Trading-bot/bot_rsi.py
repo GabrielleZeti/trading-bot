@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
 
-# Cargar configuración
+# Cargar configuración desde un archivo JSON
 with open("config.json", "r") as file:
     config = json.load(file)
 
@@ -22,13 +22,15 @@ exchange = getattr(ccxt, config["exchange"])({
     'options': {'defaultType': 'spot'}
 })
 
-# Notificaciones por Telegram
+# Configuración de Telegram para notificaciones
+TELEGRAM_TOKEN = "TU_TOKEN_DE_TELEGRAM"
+TELEGRAM_CHAT_ID = "TU_CHAT_ID"
+
 def send_telegram_message(message):
-    token = "TU_TOKEN_DE_TELEGRAM"
-    chat_id = "TU_CHAT_ID"
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    """Envía un mensaje a Telegram."""
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {
-        "chat_id": chat_id,
+        "chat_id": TELEGRAM_CHAT_ID,
         "text": message
     }
     try:
@@ -36,7 +38,6 @@ def send_telegram_message(message):
     except Exception as e:
         logger.error(f"❌ Error al enviar mensaje a Telegram: {e}")
 
-# Lógica del bot (igual que antes)
 def fetch_data(pair, timeframe, limit=100):
     """Obtiene datos OHLCV del exchange."""
     try:
@@ -76,18 +77,25 @@ def place_order(signal, pair):
         
         if signal == 'buy':
             amount = balance * 0.95 / exchange.fetch_ticker(pair)['last']
-            exchange.create_market_buy_order(pair, amount)
+            order = exchange.create_market_buy_order(pair, amount)
             logger.info(f"🚀 Compra ejecutada: {amount} {pair}")
             send_telegram_message(f"🚀 Compra ejecutada: {amount} {pair}")
 
         elif signal == 'sell':
             amount = exchange.fetch_balance()[pair.split('/')[0]]['free']
-            exchange.create_market_sell_order(pair, amount)
+            order = exchange.create_market_sell_order(pair, amount)
             logger.info(f"🔴 Venta ejecutada: {amount} {pair}")
             send_telegram_message(f"🔴 Venta ejecutada: {amount} {pair}")
 
+    except ccxt.NetworkError as e:
+        logger.error(f"❌ Error de red: {e}")
+        send_telegram_message(f"❌ Error de red: {e}")
+    except ccxt.ExchangeError as e:
+        logger.error(f"❌ Error del exchange: {e}")
+        send_telegram_message(f"❌ Error del exchange: {e}")
     except Exception as e:
         logger.error(f"❌ Error al ejecutar la orden: {e}")
+        send_telegram_message(f"❌ Error al ejecutar la orden: {e}")
 
 def run_bot():
     """Lógica principal del bot."""
@@ -105,9 +113,14 @@ def run_bot():
                 logger.info("⏳ No hay señales en este momento.")
     except Exception as e:
         logger.error(f"❌ Error en run_bot: {e}")
+        send_telegram_message(f"❌ Error en run_bot: {e}")
 
 # Bucle infinito
-while True:
-    logger.info("🔄 Ejecutando ciclo...")
-    run_bot()
-    time.sleep(3600)  # Ejecuta cada hora
+try:
+    while True:
+        logger.info("🔄 Ejecutando ciclo...")
+        run_bot()
+        time.sleep(3600)  # Ejecuta cada hora
+except KeyboardInterrupt:
+    logger.info("🛑 Bot detenido manualmente.")
+    send_telegram_message("🛑 Bot detenido manualmente.")
