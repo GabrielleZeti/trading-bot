@@ -4,6 +4,7 @@ import ta
 import time
 import json
 import logging
+import requests
 from datetime import datetime, timedelta
 
 # Configuración de logs
@@ -21,6 +22,21 @@ exchange = getattr(ccxt, config["exchange"])({
     'options': {'defaultType': 'spot'}
 })
 
+# Notificaciones por Telegram
+def send_telegram_message(message):
+    token = "TU_TOKEN_DE_TELEGRAM"
+    chat_id = "TU_CHAT_ID"
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message
+    }
+    try:
+        requests.post(url, json=payload)
+    except Exception as e:
+        logger.error(f"❌ Error al enviar mensaje a Telegram: {e}")
+
+# Lógica del bot (igual que antes)
 def fetch_data(pair, timeframe, limit=100):
     """Obtiene datos OHLCV del exchange."""
     try:
@@ -62,11 +78,13 @@ def place_order(signal, pair):
             amount = balance * 0.95 / exchange.fetch_ticker(pair)['last']
             exchange.create_market_buy_order(pair, amount)
             logger.info(f"🚀 Compra ejecutada: {amount} {pair}")
+            send_telegram_message(f"🚀 Compra ejecutada: {amount} {pair}")
 
         elif signal == 'sell':
             amount = exchange.fetch_balance()[pair.split('/')[0]]['free']
             exchange.create_market_sell_order(pair, amount)
             logger.info(f"🔴 Venta ejecutada: {amount} {pair}")
+            send_telegram_message(f"🔴 Venta ejecutada: {amount} {pair}")
 
     except Exception as e:
         logger.error(f"❌ Error al ejecutar la orden: {e}")
