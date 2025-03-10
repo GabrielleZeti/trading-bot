@@ -23,12 +23,12 @@ exchange = getattr(ccxt, config["exchange"])({
 })
 
 # Configuración de Telegram para notificaciones
-TELEGRAM_TOKEN = "TU_TOKEN_DE_TELEGRAM"
-TELEGRAM_CHAT_ID = "TU_CHAT_ID"
+TELEGRAM_TOKEN = "7006528693:AAG_b0AQZ1vpRnH73Q6y-0fankFMAYy83HI"
+TELEGRAM_CHAT_ID = "tradingGabriel_notifications_bot"
 
 def send_telegram_message(message):
     """Envía un mensaje a Telegram."""
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    url = f"https://api.telegram.org/bot{7006528693:AAG_b0AQZ1vpRnH73Q6y-0fankFMAYy83HI}/sendMessage"
     payload = {
         "chat_id": TELEGRAM_CHAT_ID,
         "text": message
