@@ -23,12 +23,12 @@ exchange = getattr(ccxt, config["exchange"])({
 })
 
 # Configuración de Telegram para notificaciones
-TELEGRAM_TOKEN = "7006528693:AAG_b0AQZ1vpRnH73Q6y-0fankFMAYy83HI"
-TELEGRAM_CHAT_ID = "tradingGabriel_notifications_bot"
+TELEGRAM_TOKEN = "TU_TOKEN_DE_TELEGRAM"
+TELEGRAM_CHAT_ID = "TU_CHAT_ID"
 
 def send_telegram_message(message):
     """Envía un mensaje a Telegram."""
-    url = f"https://api.telegram.org/bot{7006528693:AAG_b0AQZ1vpRnH73Q6y-0fankFMAYy83HI}/sendMessage"
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {
         "chat_id": TELEGRAM_CHAT_ID,
         "text": message
@@ -81,24 +81,12 @@ def place_order(signal, pair):
             logger.info(f"🚀 Compra ejecutada: {amount} {pair}")
             send_telegram_message(f"🚀 Compra ejecutada: {amount} {pair}")
 
-            # Configurar stop-loss y take-profit
-            stop_loss_price = order['price'] * (1 - config["stop_loss"])
-            take_profit_price = order['price'] * (1 + config["take_profit"])
-            logger.info(f"🛑 Stop-Loss: {stop_loss_price}, 🎯 Take-Profit: {take_profit_price}")
-            send_telegram_message(f"🛑 Stop-Loss: {stop_loss_price}, 🎯 Take-Profit: {take_profit_price}")
-
         elif signal == 'sell':
             amount = exchange.fetch_balance()[pair.split('/')[0]]['free']
             order = exchange.create_market_sell_order(pair, amount)
             logger.info(f"🔴 Venta ejecutada: {amount} {pair}")
             send_telegram_message(f"🔴 Venta ejecutada: {amount} {pair}")
 
-    except ccxt.NetworkError as e:
-        logger.error(f"❌ Error de red: {e}")
-        send_telegram_message(f"❌ Error de red: {e}")
-    except ccxt.ExchangeError as e:
-        logger.error(f"❌ Error del exchange: {e}")
-        send_telegram_message(f"❌ Error del exchange: {e}")
     except Exception as e:
         logger.error(f"❌ Error al ejecutar la orden: {e}")
         send_telegram_message(f"❌ Error al ejecutar la orden: {e}")
@@ -126,7 +114,7 @@ try:
     while True:
         logger.info("🔄 Ejecutando ciclo...")
         run_bot()
-        time.sleep(3600)  # Ejecuta cada hora
+        time.sleep(10)  # Ejecuta cada 10 segundos (solo para depuración)
 except KeyboardInterrupt:
     logger.info("🛑 Bot detenido manualmente.")
     send_telegram_message("🛑 Bot detenido manualmente.")
