@@ -81,6 +81,12 @@ def place_order(signal, pair):
             logger.info(f"🚀 Compra ejecutada: {amount} {pair}")
             send_telegram_message(f"🚀 Compra ejecutada: {amount} {pair}")
 
+            # Configurar stop-loss y take-profit
+            stop_loss_price = order['price'] * (1 - config["stop_loss"])
+            take_profit_price = order['price'] * (1 + config["take_profit"])
+            logger.info(f"🛑 Stop-Loss: {stop_loss_price}, 🎯 Take-Profit: {take_profit_price}")
+            send_telegram_message(f"🛑 Stop-Loss: {stop_loss_price}, 🎯 Take-Profit: {take_profit_price}")
+
         elif signal == 'sell':
             amount = exchange.fetch_balance()[pair.split('/')[0]]['free']
             order = exchange.create_market_sell_order(pair, amount)
